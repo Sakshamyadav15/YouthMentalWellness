@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from './components/HomePage';
+import ChatbotPage from './components/ChatbotPage';
 import ScreeningPage from './components/ScreeningPage';
 import ResultsPage from './components/ResultsPage';
 import ResourcesPage from './components/ResourcesPage';
@@ -17,6 +18,7 @@ function App() {
           <Route path="/screening" element={<ScreeningPage />} />
           <Route path="/results" element={<ResultsPage />} />
           <Route path="/resources" element={<ResourcesPage />} />
+          <Route path="/chat" element={<ChatbotPage />} />
           <Route path="/profile" element={<ProfilePage />} />
         </Routes>
       </div>

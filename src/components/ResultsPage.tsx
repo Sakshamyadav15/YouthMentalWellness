@@ -1,21 +1,33 @@
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, RefreshCw, Lightbulb, Smile } from 'lucide-react';
 
 const ResultsPage = () => {
   const navigate = useNavigate();
+  const location = useLocation() as any;
+  const apiResult = location?.state?.result as {
+    primary?: string;
+    confidence?: number;
+    emotions?: { label: string; score: number }[];
+  } | undefined;
 
+  // Map API result to UI structure with colors
+  const palette = ['bg-green-400','bg-yellow-400','bg-blue-400','bg-red-400','bg-purple-400','bg-pink-400','bg-emerald-400'];
+  const mappedEmotions = apiResult?.emotions?.map((e, i) => ({
+    name: e.label,
+    value: Math.round(e.score),
+    color: palette[i % palette.length],
+  })) ?? [
+    { name: 'Sad', value: 15, color: 'bg-blue-400' },
+    { name: 'Happy', value: 25, color: 'bg-yellow-400' },
+    { name: 'Calm', value: 87, color: 'bg-green-400' },
+    { name: 'Stressed', value: 20, color: 'bg-red-400' },
+    { name: 'Anxious', value: 10, color: 'bg-purple-400' }
+  ];
   const emotionData = {
-    primary: 'Calm',
-    confidence: 87,
-    emotions: [
-      { name: 'Sad', value: 15, color: 'bg-blue-400' },
-      { name: 'Happy', value: 25, color: 'bg-yellow-400' },
-      { name: 'Calm', value: 87, color: 'bg-green-400' },
-      { name: 'Stressed', value: 20, color: 'bg-red-400' },
-      { name: 'Anxious', value: 10, color: 'bg-purple-400' }
-    ]
+    primary: apiResult?.primary ?? 'Calm',
+    confidence: Math.round(apiResult?.confidence ?? 87),
+    emotions: mappedEmotions,
   };
 
   return (
@@ -109,8 +121,7 @@ const ResultsPage = () => {
               <span className="text-green-700 font-medium">AI Insight</span>
             </div>
             <p className="text-green-800 leading-relaxed">
-              You seem calm today. Great job staying balanced! Your emotional state indicates 
-              good mental stability with low stress levels.
+              {`Primary: ${emotionData.primary}. Confidence: ${emotionData.confidence}%.`}
             </p>
           </motion.div>
         </motion.div>

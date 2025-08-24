@@ -46,7 +46,7 @@ const HomePage = () => {
                 </motion.button>
               </Link>
               
-              <Link to="/resources">
+              <Link to="/chat">
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}

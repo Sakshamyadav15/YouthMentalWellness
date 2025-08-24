@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Stethoscope, MessageCircle, BookOpen, User, Settings } from 'lucide-react';
+import { Home, Stethoscope, MessageCircle, BookOpen, User, Settings, Bot } from 'lucide-react';
 
 const Navigation = () => {
   const location = useLocation();

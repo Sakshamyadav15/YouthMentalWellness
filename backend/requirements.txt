@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+transformers>=4.40
+torch>=2.1
+librosa
+numpy
+pydantic
+python-multipart

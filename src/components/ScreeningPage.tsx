@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { BACKEND_URL } from '../config';
 import { motion } from 'framer-motion';
-import MicrophoneButton from './MicrophoneButton';
 import { ArrowLeft, Play, Square } from 'lucide-react';
 
 const ScreeningPage = () => {
@@ -9,33 +9,84 @@ const ScreeningPage = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [progress, setProgress] = useState(0);
   const [timeLeft, setTimeLeft] = useState(15);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
+    let interval: number;
     if (isRecording && timeLeft > 0) {
       interval = setInterval(() => {
         setTimeLeft(prev => prev - 1);
         setProgress(prev => prev + (100 / 15));
       }, 1000);
-    } else if (timeLeft === 0) {
-      setIsRecording(false);
+    } else if (timeLeft === 0 && isRecording) {
+      handleStopRecording();
     }
     
     return () => clearInterval(interval);
   }, [isRecording, timeLeft]);
 
-  const handleStartRecording = () => {
+  const handleStartRecording = async () => {
     setIsRecording(true);
     setProgress(0);
     setTimeLeft(15);
+    setAudioChunks([]);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      const recorder = new MediaRecorder(stream);
+      setMediaRecorder(recorder);
+      recorder.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) setAudioChunks((prev) => [...prev, e.data]);
+      };
+      recorder.onstop = () => {
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop());
+          streamRef.current = null;
+        }
+      };
+      recorder.start();
+    } catch (err) {
+      setErrorMsg('Microphone access denied or not available.');
+      setIsRecording(false);
+    }
   };
 
   const handleStopRecording = () => {
     setIsRecording(false);
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+    }
   };
 
-  const handleAnalyze = () => {
-    navigate('/results');
+  const handleAnalyze = async () => {
+    if (audioChunks.length === 0) {
+      setErrorMsg('No audio recorded.');
+      return;
+    }
+    setIsUploading(true);
+    setErrorMsg(null);
+    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+    const formData = new FormData();
+    formData.append('file', audioBlob, 'voice.webm');
+    try {
+      const response = await fetch(`${BACKEND_URL}/predict`, {
+        method: 'POST',
+        body: formData,
+      });
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+      const result = await response.json();
+      setIsUploading(false);
+      navigate('/results', { state: { result } });
+    } catch (err: any) {
+      setIsUploading(false);
+      setErrorMsg('Error sending audio to backend. Please try again.');
+    }
   };
 
   const handleCancel = () => {
@@ -153,6 +204,10 @@ const ScreeningPage = () => {
             <p className="text-blue-600 font-medium">
               🎤 Listening to your voice...
             </p>
+          ) : isUploading ? (
+            <p className="text-purple-600 font-medium">
+              ⏳ Uploading & analyzing...
+            </p>
           ) : progress > 0 ? (
             <p className="text-green-600 font-medium">
               ✓ Recording completed
@@ -179,15 +234,21 @@ const ScreeningPage = () => {
           </button>
           <button
             onClick={handleAnalyze}
-            disabled={progress < 100}
+            disabled={progress < 100 || isUploading}
             className={`flex-1 py-3 px-6 font-medium rounded-xl transition-all ${
-              progress >= 100
+              progress >= 100 && !isUploading
                 ? 'bg-gradient-to-r from-blue-400 to-purple-500 text-white shadow-lg hover:shadow-xl'
                 : 'bg-gray-200 text-gray-400 cursor-not-allowed'
             }`}
           >
-            Analyze
+            {isUploading ? 'Analyzing...' : 'Analyze'}
           </button>
+        {/* Error toast */}
+        {errorMsg && (
+          <div className="mt-4 bg-red-100 text-red-700 px-4 py-2 rounded shadow text-sm text-center">
+            {errorMsg}
+          </div>
+        )}
         </motion.div>
       </div>
     </div>
